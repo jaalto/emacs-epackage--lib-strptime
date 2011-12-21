@@ -1,0 +1,22 @@
+Package: lib-strptime
+Section: extensions
+License: GPL-2+
+Depends: emacs (>= 22)
+Status: core-xemacs unmaintained
+Compat:
+Maintainer: Jari Aalto <jari.aalto@cante.net>
+Bugs:
+Upstream: Adrian Aichner <adrian@xemacs.org>
+Upstream-Bugs:
+Vcs-Type: http
+Vcs-Url: http://www.emacswiki.org/emacs/download/strptime.el
+Vcs-Browser:
+Homepage:
+Wiki:
+Commentary:
+Description: library of POSIX date and time function strptime()
+ Implemented (partially, specifically without locale support)
+ according to
+ http://www.opengroup.org/onlinepubs/009695399/functions/strptime.html
+ .
+ Note 2011-12-21 the code hasn't been touched since 2006.

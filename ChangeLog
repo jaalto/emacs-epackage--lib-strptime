@@ -1,0 +1,7 @@
+2011-12-21 Wed  Jari Aalto  <jari.aalto@cante.net>
+
+	* strptime.el (require cl): Add.
+	(strptime-replace-in-string): Add from  XEmacs subr.el
+	(strptime): Replace all XEmacs specific code with standard
+	`with-current-buffer' etc. that should work in any Emacs.
+

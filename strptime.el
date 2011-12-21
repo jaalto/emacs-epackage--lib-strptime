@@ -7,7 +7,40 @@
 ;;; according to
 ;;; http://www.opengroup.org/onlinepubs/009695399/functions/strptime.html
 
+(require 'cl)
 (require 'regexp-opt)
+
+;; Copy from XEmacs::subr.el
+(defun strptime-replace-in-string (str regexp newtext &optional literal)
+  "Replace all matches in STR for REGEXP with NEWTEXT string,
+ and returns the new string.
+Optional LITERAL non-nil means do a literal replacement.
+Otherwise treat `\\' in NEWTEXT as special:
+  `\\&' in NEWTEXT means substitute original matched text.
+  `\\N' means substitute what matched the Nth `\\(...\\)'.
+       If Nth parens didn't match, substitute nothing.
+  `\\\\' means insert one `\\'.
+  `\\u' means upcase the next character.
+  `\\l' means downcase the next character.
+  `\\U' means begin upcasing all following characters.
+  `\\L' means begin downcasing all following characters.
+  `\\E' means terminate the effect of any `\\U' or `\\L'."
+  (if (> (length str) 50)
+      (let ((cfs case-fold-search))
+	(with-temp-buffer
+          (setq case-fold-search cfs)
+	  (insert str)
+	  (goto-char 1)
+	  (while (re-search-forward regexp nil t)
+	    (replace-match newtext t literal))
+	  (buffer-string)))
+  (let ((start 0) newstr)
+    (while (string-match regexp str start)
+      (setq newstr (replace-match newtext t literal str)
+	    start (+ (match-end 0) (- (length newstr) (length str)))
+	    str newstr))
+    str)))
+
 
 ; (dotimes (m 12) (insert (format "(\"\" . %d)\n" (+ m 1))))
 (defconst strptime-month-assoc
@@ -237,21 +270,22 @@ Following directives are supported:
                  (catch 'cannot-parse-date-time
                    (while
                        (and (not (eobp))
-                            (not (eobp time-buffer)))
+                            (not (with-current-buffer time-buffer (eobp))))
                      (cond
                       ((handle-item) t)
                       (t
                        ;; Restore point in case of error
                        (if (bufferp time)
-                           (goto-char time-buffer-point time-buffer))
+                           (with-current-buffer time-buffer
+			     (goto-char time-buffer-point)))
                        (if (bufferp time)
                            (throw 'cannot-parse-date-time t)
                          (error "cannot parse date %S with %S at %S"
                                 time format
-                                (buffer-substring
-                                 (point-min time-buffer)
-                                 (point time-buffer)
-                                 time-buffer))
+                                (with-current-buffer time-buffer
+				  (buffer-substring
+				   (point-min)
+				   (point))))
                          )
                        ))))
                  nil
@@ -275,15 +309,16 @@ Following directives are supported:
                (setq data-regex (nth 1 format-data-index))
                (setq index (nth 2 format-data-index))
                (if data-regex
-                   (if (looking-at data-regex time-buffer)
+                   (if (with-current-buffer time-buffer (looking-at data-regex))
                        (progn
                          (unless date-time-start-position
                            (setq date-time-start-position (match-beginning 0)))
                          (setq date-time-end-position (match-end 0))
                          (setq text
-                               (buffer-substring
-                                (match-beginning 0)
-                                (match-end 0) time-buffer))
+			       (with-current-buffer time-buffer 
+				 (buffer-substring
+				  (match-beginning 0)
+				  (match-end 0))))
 
                          (if index
                              (progn
@@ -314,85 +349,92 @@ Following directives are supported:
                                   ((string-match "\\`P\\.?M\\.?\\'" (upcase text))
                                    (if (< (aref result 2) 12)
                                        (aset result 2 (+ (aref result 2) 12))))))))
-                         (goto-char (match-end 0) time-buffer)
+			 (with-current-buffer time-buffer
+			   (goto-char (match-end 0)))
                          (not (string-equal text "")))
                      ;; Restore point in case of error
                      (if (bufferp time)
-                         (goto-char time-buffer-point time-buffer))
+			 (with-current-buffer time-buffer
+			   (goto-char time-buffer-point)))
                      ;; FIXME: Is this an error in this
                      ;; implementation?
                      (if (bufferp time)
                          nil
                        (error "failed to parse %S by %S in %S at %S"
                               format-data data-regex time
-                              (buffer-substring
-                               (point-min)
-                               (point time-buffer)
-                               time-buffer)))
+			      (let ((min (point-min)))
+				(with-current-buffer time-buffer
+				  (buffer-substring
+				   min
+				   (point))))))
                      )
-                 (goto-char
-                  (+ (point time-buffer)
-                     (- (match-end 0) (match-beginning 0))) time-buffer)))
+		 (with-current-buffer time-buffer
+		   (goto-char
+		    (+ (point)
+		       (- (match-end 0) (match-beginning 0)))))))
               ((looking-at "[^% \n\r\t]")
                (setq format-data
                      (buffer-substring
                       (match-beginning 0)
                       (match-end 0)))
                (goto-char (match-end 0))
-               (looking-at "[^%]" time-buffer)
-               (setq text
-                     (buffer-substring
-                      (match-beginning 0)
-                      (match-end 0) time-buffer))
+	       (with-current-buffer time-buffer 
+		 (looking-at "[^%]")
+		 (setq text
+		       (buffer-substring
+			(match-beginning 0)
+			(match-end 0))))
                (cond
                 ((not
                   (string-equal format-data text))
                  ;; Restore point in case of error
                  (if (bufferp time)
-                     (progn
-                       (goto-char time-buffer-point time-buffer)
+		     (with-current-buffer time-buffer
+		       (goto-char time-buffer-point)
                        nil)
                    (error
                     (format
                      "\"%s\" does not match specification \"%s\"\n"
                      text format-data))))
                 (t
-                 (goto-char
-                  (+ (point time-buffer)
-                     (- (match-end 0) (match-beginning 0))) time-buffer))))
-              ((looking-at "[ \n\r\t]+")
+		 (with-current-buffer time-buffer
+		   (goto-char
+		    (+ (point)
+		       (- (match-end 0) (match-beginning 0))))))))
+	      ((looking-at "[ \n\r\t]+")
                (setq format-data
                      (buffer-substring
                       (match-beginning 0)
                       (match-end 0)))
                (goto-char (match-end 0))
-               (looking-at "[ \n\r\t]+" time-buffer)
-               (goto-char
-                (+ (point time-buffer)
-                   (- (match-end 0) (match-beginning 0))) time-buffer)
+	       (with-current-buffer time-buffer
+		 (looking-at "[ \n\r\t]+")
+		 (goto-char
+		  (+ (point)
+		     (- (match-end 0) (match-beginning 0)))))
                )
               (t
                ;; Restore point in case of error
                (if (bufferp time)
-                   (progn
-                     (goto-char time-buffer-point time-buffer)
+		   (with-current-buffer time-buffer
+		     (goto-char time-buffer-point)
                      nil)
                  (error "cannot parse date %S with %S at %S"
                         time format
-                        (buffer-substring
-                         (point-min time-buffer)
-                         (point time-buffer)
-                         time-buffer))))))))
+			(with-current-buffer time-buffer
+			  (buffer-substring
+			   (point-min)
+			   (point))))))))))
       (setq handle-item-match-data (match-data))
       ;; Replace directive aliases
-      (setq format (replace-in-string format "%e" "%d"))
-      (setq format (replace-in-string format "%A" "%a"))
-      (setq format (replace-in-string format "%B" "%b"))
-      (setq format (replace-in-string format "%h" "%b"))
+      (setq format (strptime-replace-in-string format "%e" "%d"))
+      (setq format (strptime-replace-in-string format "%A" "%a"))
+      (setq format (strptime-replace-in-string format "%B" "%b"))
+      (setq format (strptime-replace-in-string format "%h" "%b"))
       ;; Break down composite cases to individual components.
-      (setq format (replace-in-string format "%D" "%m/%d/%y"))
-      (setq format (replace-in-string format "%T" "%H:%M:%S"))
-      (setq format (replace-in-string format "%R" "%H:%M"))
+      (setq format (strptime-replace-in-string format "%D" "%m/%d/%y"))
+      (setq format (strptime-replace-in-string format "%T" "%H:%M:%S"))
+      (setq format (strptime-replace-in-string format "%R" "%H:%M"))
       ;; prog1 is needed to return value of cond, not of the
       ;; final `store-match-data', which is needed to avoid
       ;; side-effects of `looking-at'.
@@ -402,13 +444,14 @@ Following directives are supported:
             (with-temp-buffer
               (setq time-buffer (current-buffer))
               (insert time)
-              (goto-char (point-min) time-buffer)
+	      (with-current-buffer time-buffer
+		(goto-char (point-min)))
               (if extended
                   (strptime-internal)
                 (car (strptime-internal)))))
            ((bufferp time)
             (setq time-buffer (current-buffer))
-            (setq time-buffer-point (point time-buffer))
+            (setq time-buffer-point (with-current-buffer time-buffer (point)))
             (if extended
                 (strptime-internal)
               (car (strptime-internal))))

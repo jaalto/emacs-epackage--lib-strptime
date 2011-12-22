@@ -14,9 +14,6 @@ Vcs-Browser:
 Homepage:
 Wiki:
 Commentary:
-X-Development:
- Upstream official code repository is XEmacs package tree at
- http://alioth.debian.org/scm/?group_id=31270
 Description: library of POSIX date and time function strptime()
  Implemented (partially, specifically without locale support)
  according to

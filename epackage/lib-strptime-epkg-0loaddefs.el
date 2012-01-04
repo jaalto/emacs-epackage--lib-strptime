@@ -1,6 +1,7 @@
 
-;;;### (autoloads (strptime) "strptime" "../strptime.el" (18750 60290))
-;;; Generated autoloads from ../strptime.el
+;;;### (autoloads (strptime) "../strptime" "strptime.el" (20210
+;;;;;;  30148))
+;;; Generated autoloads from strptime.el
 
 (autoload 'strptime "strptime" "\
 
@@ -77,4 +78,3 @@ Following directives are supported:
 \(fn TIME FORMAT &optional EXTENDED)" t nil)
 
 ;;;***
-(provide 'lib-strptime-epkg-0loaddefs)

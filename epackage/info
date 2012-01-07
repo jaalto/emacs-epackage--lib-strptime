@@ -19,4 +19,6 @@ Description: library of POSIX date and time function strptime()
  according to
  http://www.opengroup.org/onlinepubs/009695399/functions/strptime.html
  .
- Note 2011-12-21 the code hasn't been touched since 2006.
+ Note: 2011-12-21 the code hasn't been touched since 2006.
+ .
+ PATCHES: Patched XEmacs code to work in Emacs.
